@@ -1,0 +1,380 @@
+% !TeX program = lualatex
+% UTF-8. Compile from the docs directory with LuaLaTeX (twice).
+% This file is independently editable; it does not input a Markdown file.
+\documentclass[a4paper,10pt]{ltjsarticle}
+\usepackage{myfont-setting}
+\usepackage[top=21mm,bottom=21mm,left=22mm,right=22mm,headheight=15pt,headsep=8mm]{geometry}
+\usepackage[table]{xcolor}
+\definecolor{Ink}{HTML}{18344A}
+\definecolor{Blue}{HTML}{064C70}
+\definecolor{Pale}{HTML}{EDF5FA}
+\definecolor{Line}{HTML}{A9BDCA}
+\usepackage{array,longtable,booktabs}
+\usepackage{enumitem}
+\usepackage{fvextra}
+\usepackage{titlesec}
+\usepackage{fancyhdr,lastpage}
+\usepackage{xurl}
+\usepackage[unicode,colorlinks=true,urlcolor=Blue,linkcolor=Blue]{hyperref}
+\hypersetup{pdftitle={なばり情報システム 実装・技術検証報告},pdfauthor={研究プロジェクト制作支援}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{Blue}なばり情報システムの研究}
+\fancyfoot[L]{\footnotesize 2026-09-29 / v2.0.0 / Flask}
+\fancyfoot[R]{\footnotesize\thepage\ / \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\titleformat{\section}{\Large\bfseries\sffamily\color{Blue}}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\sffamily\color{Blue}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{0pt}{12pt}
+\titlespacing*{\subsection}{0pt}{12pt}{7pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\linespread{1.23}
+\setlength{\emergencystretch}{3em}
+\setlist[itemize]{leftmargin=1.6em,topsep=3pt,itemsep=3pt,parsep=0pt}
+\renewcommand{\arraystretch}{1.28}
+\setlength{\tabcolsep}{5pt}
+\setlength{\LTpre}{8pt}
+\setlength{\LTpost}{10pt}
+\DefineVerbatimEnvironment{Code}{Verbatim}{fontsize=\small,breaklines=true,breakanywhere=true,frame=single,framesep=3mm,rulecolor=\color{Line},fillcolor=Pale}
+\color{Ink}
+\begin{document}
+
+
+{\fontsize{25}{35}\selectfont\bfseries\sffamily\color{Blue}なばり情報システム(仮)\par}\vspace{8pt}
+
+\section*{Flaskによる地域情報収集・提供システム}
+Hiroki Funashima
+\vspace{\fill}
+
+卒業研究用　実装・技術検証報告\\
+2026年9月28日 / v2.0.0
+\clearpage
+
+
+提供された「ITに不慣れな人でも使用できる名張市情報提供システム」の計画をもとに、名張市役所と名張市観光協会の公開情報を集め、保存し、動的なWebページとして提供するシステムを実装した。今回の成果は動くソフトウェアと技術検証であり、住民を対象とした利用実験は未実施である。
+
+
+\subsection*{今回の成果}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{項目} & \textbf{実装・実行した内容} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{項目} & \textbf{実装・実行した内容} \\ \midrule\endhead
+
+構成 & Flask、SQLite、requests、BeautifulSoup、Waitress \\ \addlinespace[3pt]
+
+収集先 & 名張市役所の新着・定番ページ、名張市観光協会のお知らせ \\ \addlinespace[3pt]
+
+動的表示 & 横断検索、出典・カテゴリの絞り込み、一覧・詳細、ページ送り \\ \addlinespace[3pt]
+
+更新管理 & 定期収集、URL重複排除、内容変更の検出、版・失敗履歴 \\ \addlinespace[3pt]
+
+実データ & 30件保存。市役所18件、観光協会12件 \\ \addlinespace[3pt]
+
+技術検証 & 自動テスト58件合格、実HTTPで画面・APIの応答確認 \\ \addlinespace[3pt]
+
+研究支援 & 固定UIの予備実験、課題・評価票・集計コードを同梱 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+取得対象31ページのうち、市役所の1ページはHTTP 502で取得できなかった。他の記事は保存された。30件中1件は出典の掲載日が本日より先であり、2026年9月29日時点では29件を閲覧対象にしている。
+
+
+\subsection*{結論の範囲}
+
+2団体からの収集、永続保存、Flaskによる動的表示が動くことを確認した。「高齢者にも使いやすい」「イベント参加が増えた」「情報格差が改善した」という効果はまだ測定していない。名張市・観光協会の公式サービスではなく、研究用の情報案内である。
+
+
+\clearpage
+
+\section*{1. 研究目的と要件}
+
+原計画は、情報へのアクセス改善と地域参加の促進を目指している。実装では、複数の出典を一か所から探せること、情報の出典と鮮度を利用者が判断できることを具体的な要件にした。追加要望に従い、Flaskを採用し、市役所に加えて名張市観光協会も収集対象とした。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{要件} & \textbf{本版での具体化} & \textbf{到達点} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{要件} & \textbf{本版での具体化} & \textbf{到達点} \\ \midrule\endhead
+
+地域情報を集める & 2団体の公開HTMLを別々のパーサで抽出 & 実ページから30件を保存 \\ \addlinespace[3pt]
+
+情報を保管する & SQLiteの記事・版・収集履歴 & 再起動後も参照できる \\ \addlinespace[3pt]
+
+変化を表示へ反映する & DBからJinjaテンプレートとJSON APIを生成 & HTMLの手動再生成が不要 \\ \addlinespace[3pt]
+
+探しやすくする & 横断検索・7カテゴリ・出典指定 & 機能テスト済み。利用者評価は未実施 \\ \addlinespace[3pt]
+
+更新失敗に耐える & 記事単位の保存、エラーの記録 & 片方の失敗でも保存内容を維持 \\ \addlinespace[3pt]
+
+根拠を示す & 出典URL、出典の日付、取得日時 & 確認者の検証済み情報とは区別 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+\subsection*{研究質問}
+
+技術面では、異なる構造の公式サイトから、出典を保ちながら情報を統合し、更新・重複・失敗を正しく扱えるかを検証する。利用面では、IT操作に不慣れな人が必要な情報を支援なしで見つけられるかを今後評価する。
+
+
+機能を搭載したこと自体を新規性の証明とはしない。公式サイトにも分類・検索・閲覧補助があるため、研究の中心は対象者の困難の把握、統合した情報の扱い、実測に基づく改善とする。高齢者とITに不慣れな人を同一視しない。
+
+
+\subsection*{対象範囲}
+
+標準設定は各新着一覧の先頭12件と、市役所のごみ・保健・相談等の定番7ページである。自治体・観光情報の全件収集ではない。観光協会の年間行事案内を当年の確定開催日として取り込む処理も行わない。
+
+
+\clearpage
+
+\section*{2. システム構成と操作}
+
+収集処理が公開HTMLを取得・抽出し、SQLiteへ保存する。ブラウザからの要求に応じてFlaskがDBを検索し、JinjaでHTMLを生成する。ブラウザは収集元へ直接アクセスせず、保存データを閲覧するため、外部サイトが一時的に応答しない間も以前の情報を表示できる。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{部分} & \textbf{主要ファイル} & \textbf{役割} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{部分} & \textbf{主要ファイル} & \textbf{役割} \\ \midrule\endhead
+
+起動・定期処理 & run.py & Waitressと単一の定期収集スレッド \\ \addlinespace[3pt]
+
+取得先定義 & nabari/sources.py & 2団体のURL、許可ホスト、定番ページ \\ \addlinespace[3pt]
+
+収集と抽出 & nabari/collector.py & robots確認、HTML解析、変更判定へ渡す \\ \addlinespace[3pt]
+
+永続化 & nabari/db.py & 記事、版、収集履歴、取込・書出し \\ \addlinespace[3pt]
+
+動的表示 & nabari/routes.py、templates/ & 検索条件、HTML・JSON、状態表示 \\ \addlinespace[3pt]
+
+閲覧補助 & static/live.js、CSS & 文字サイズ、配色、音声、印刷 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+記事はURLを一意キーに持ち、題名・180文字までの抜粋・自動カテゴリ・出典の日付・取得日時・本文ハッシュ・版番号を保存する。全文はハッシュを計算するために一時的に解析し、DBや配信ページには全文を残さない。画像・PDFは収集しない。
+
+
+\subsection*{利用者の操作}
+
+トップで言葉、カテゴリ、出典を指定すると、その条件に一致する記事が表示される。題名を開くと抜粋と公式リンクを読める。一覧へ戻るリンクは検索条件を保持する。基本の検索と詳細閲覧はJavaScriptを必要としない。文字サイズ等の設定は端末内に保存する。
+
+
+検索は全角半角・ひらがなカタカナを正規化した部分一致で、複数語はAND条件とする。対象は題名と短い抜粋等であり、全文検索や意味検索ではない。APIも同じ検索条件を使用する。
+
+
+\subsection*{日付を混同しない}
+
+「出典の掲載日・更新日」「このシステムの取得日時」「内容の変更検出日時」を区別する。開催日は自動推定しない。並び順は掲載・更新日の新しい順であり、イベント開催順ではない。未来の出典日付は、日付の到来まで閲覧対象から除外する。
+
+
+\clearpage
+
+\section*{3. 収集・更新と障害への対応}
+
+\subsection*{収集の手順}
+
+\begin{itemize}
+
+\item 起動直後と、その後30分おきに2団体を順に確認する。停止中は更新されない。
+
+\item robots.txtを確認してから、新着一覧と個別記事へアクセスする。
+
+\item 許可したHTTPSホストだけを扱い、転送先も同じ許可範囲で確認する。
+
+\item 同一URLの本文等が同じなら取得日時だけを更新し、異なる場合は版を増やす。
+
+\item 成功・一部失敗・失敗の結果と件数をDBに記録する。
+
+\end{itemize}
+
+1秒以上の通信間隔、接続15秒・受信25秒のタイムアウト、応答2MiB上限、本文受信中の経過時間上限を設けた。robotsの待ち時間があれば優先する。403・429・robots拒否ではその出典の収集を中止する。404/410のrobotsはルールなし、robotsの5xxや通信失敗は収集中止とする。
+
+
+\subsection*{重複・変更・失敗}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{状況} & \textbf{処理} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{状況} & \textbf{処理} \\ \midrule\endhead
+
+同じURL・同じ内容 & 行を増やさず、最終取得日時を更新 \\ \addlinespace[3pt]
+
+本文後半だけが変化 & 全文抽出のハッシュ差で検出し、版を追加 \\ \addlinespace[3pt]
+
+記事1件の取得失敗 & 以前のデータを保持し、失敗URLを記録 \\ \addlinespace[3pt]
+
+一覧の構造が変化 & 抽出失敗を記録し、空データで置き換えない \\ \addlinespace[3pt]
+
+二重起動・連続実行 & 出典単位の実行ロックと15分の間隔で抑止 \\ \addlinespace[3pt]
+
+実行が中断された & 30分進行がなければ失敗扱い。間隔を空けて再実行 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+記事は個別にコミットするため、後のページが失敗しても先に保存した記事は失われない。進行時刻を更新することで、正常に続いている長い収集を中断と誤認しにくくしている。
+
+
+\subsection*{運用上の範囲}
+
+新着一覧から外れた記事も保存するが、定番ページ以外は更新を追い続けない。詳細には記事ごとの取得日時を示し、24時間以上経過した情報には注意表示する。全件の消滅検知、イベント終了判定、管理者のWeb編集、本文の正誤判定は本版に含めない。
+
+
+\clearpage
+
+\section*{4. 実行結果と技術検証}
+
+実ページへの検証収集を2026年9月29日16:53〜16:54（日本時間）に行った。各新着一覧12件を上限とし、市役所の定番7件を加えた。次表の分母はこの設定で選んだページであり、両サイト全体の情報網羅率ではない。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{出典} & \textbf{対象・取得} & \textbf{実行結果} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{出典} & \textbf{対象・取得} & \textbf{実行結果} \\ \midrule\endhead
+
+名張市役所 & 19件中18件 & 1件でHTTP 502。取得できた18件を保存 \\ \addlinespace[3pt]
+
+名張市観光協会 & 12件中12件 & すべて保存 \\ \addlinespace[3pt]
+
+合計 & 31件中30件 & 未来の日付1件を除き、当日は29件を表示 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+市役所の建築芸術祭ページが取得時に502となった。観光協会の1件には2026年10月1日の掲載日が付いており、収集日には非表示とした。これらは実際の取得結果であり、失敗を成功として補完していない。初回の接続タイムアウトを受けて接続待ち時間を見直し、その後の検証DBで上表の収集を実行した。
+
+
+\subsection*{自動テスト}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{対象} & \textbf{合格件数} & \textbf{主な確認点} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{対象} & \textbf{合格件数} & \textbf{主な確認点} \\ \midrule\endhead
+
+Flask・収集・DB & 29 & 2団体の解析、重複、変更、失敗保持、許可URL、robots、未来日、HTMLエスケープ、DB再読込 \\ \addlinespace[3pt]
+
+予備実験の集計 & 9 & 未実施データ、練習の除外、異常値、参加者内比較、異なるデータ版の拒否 \\ \addlinespace[3pt]
+
+固定予備実験UI & 20 & 検索、日付、割付、DOM上の操作、記録・書出し \\ \addlinespace[3pt]
+
+合計 & 58 & 合成データを含むテスト。利用者の実験ではない \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+加えてWaitressでFlaskを起動し、実HTTP経由でトップ、出典・言葉の検索、詳細、収集状況、API、固定実験画面、疎通確認の応答を確認した。APIの全体29件、観光協会11件は、保存データ30件・未来日1件と一致した。
+
+
+検証ログは results/ に、取得済みデータと時刻は data/collected\_snapshot.json に保存した。実ブラウザでの画面描画、スクリーンリーダー、音声、印刷、対象者の使いやすさは未検証である。WCAG適合を表明するものではない。
+
+
+\clearpage
+
+\section*{5. 研究評価の準備と未実施事項}
+
+利用者実験の参加者は0人である。動作確認用の合成データや練習データから、利用者の効果量を作ってはいない。技術的な取得成功と、利用者が正しい情報に到達できることは別々に評価する。
+
+
+\subsection*{同梱した予備実験}
+
+旧試作UIを /research/ に残し、市役所情報10件を2026年9月29日の版に固定した。同じデータに対するカテゴリ等を備えた画面と題名一覧を、6課題・4群の順序調整で比較する。支援なしの正答率と、失敗・支援・時間切れを180秒とする制限付き時間を記録する。
+
+
+参加者単位で条件差を計算し、百分位ブートストラップで95\%区間を求める。1人では区間を出さず、0人ならデータなしとする。異なるデータのハッシュや練習記録を本試行へ混ぜない。
+
+
+この予備実験UIは新しいFlask画面と同一ではなく、観光協会情報も含まない。その結果をFlask版の効果として扱うことはできない。最終版では同じ収集スナップショットを使う2条件を準備し、観光情報の課題も加えて難度をそろえる必要がある。
+
+
+\subsection*{次に測る項目}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{対象} & \textbf{評価方法} & \textbf{現状} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{対象} & \textbf{評価方法} & \textbf{現状} \\ \midrule\endhead
+
+分類の妥当性 & 人が独立に付けたカテゴリと照合し、誤分類を分析 & 未実施 \\ \addlinespace[3pt]
+
+取得の継続性 & 複数日の成功・遅延・構造変更を観測 & 単回の技術確認のみ \\ \addlinespace[3pt]
+
+探しやすさ & 固定データ・統一端末で支援なし正答率と時間を比較 & 本試行未実施 \\ \addlinespace[3pt]
+
+表示・支援技術 & 狭い画面、拡大、キーボード、読み上げで実機確認 & 未実施 \\ \addlinespace[3pt]
+
+地域への効果 & 参加行動や情報への到達機会を長期的に評価 & 今回の対象外 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+事前に対象者、人数、課題、同意、支援の定義、保存期間、欠測の扱いを確定する。学習・疲労・課題差を考慮し、成功例だけを抜き出さない。具体的な手順と評価票は docs/ に同梱した。
+
+
+\clearpage
+
+\section*{6. 再現方法・引き継ぎ}
+
+Python 3.11以上を用い、ZIPを展開したフォルダで仮想環境を作る。WindowsとmacOS/Linuxの有効化手順はREADMEに記載した。Node.jsは固定研究UIのテスト時だけ必要で、Flaskの運用には不要である。
+
+
+\begin{Code}
+python -m venv .venv
+python -m pip install -r requirements.txt
+python run.py
+\end{Code}
+
+上記のpipと起動は、仮想環境を有効にしてから実行する。ブラウザで \url{http://127.0.0.1:8000/} を開く。起動時に自動収集が始まり、以後30分おきに更新される。初回収集中は /status で件数と状態を確認する。
+
+
+通信せずに試す場合は、空のDBへ同梱スナップショットを取り込む。元の取得日時が保持され、実行時点の最新情報とは表示しない。
+
+
+\begin{Code}
+python -m flask --app nabari import-demo
+python run.py --no-collect
+\end{Code}
+
+\subsection*{配置と公開}
+
+既定の保存先は instance/nabari.sqlite3 である。Waitressはローカル接続で起動する。外部公開する場合はFlaskを稼働させるサーバ、HTTPS、アクセス制御、永続ディスク、バックアップを設定する。Linuxサービスと独立した定期収集の例は deploy/README.md に示した。今回、Flaskサーバの外部公開は行っていない。
+
+
+\subsection*{主な参照先}
+
+名張市役所 新着情報一覧\\
+\url{https://www.city.nabari.lg.jp/news.html}
+
+
+名張市観光協会 お知らせ\\
+\url{https://kankou-nabari.jp/news}
+
+
+Flask公式ドキュメント（アプリファクトリ、テスト、Waitress）\\
+\url{https://flask.palletsprojects.com/en/stable/}
+
+
+W3C Web Content Accessibility Guidelines 2.2（設計時の参照）\\
+\url{https://www.w3.org/TR/WCAG22/}
+
+
+記事ごとの出典・取得日時はスナップショットに、その他の参照先は docs/sources.md にある。学生は支援を受けた実装範囲を明記し、自分が理解・変更・実測した部分を研究成果として説明する。
+
+
+\end{document}

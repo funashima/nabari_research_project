@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="intro"><p class="eyebrow">名張の情報を、見つけやすく。</p><h1>知りたいことは、何ですか？</h1><p>市役所のお知らせと、観光協会の案内をまとめて探せます。</p></div>
+<form class="search search-panel" role="search" action="{{ url_for('web.index') }}" method="get">
+  <label for="query">言葉で探す</label>
+  <div class="search-line"><input id="query" name="q" type="search" maxlength="100" value="{{ query }}" placeholder="例：ごみ、相談、秋祭り"><button class="primary" type="submit">探す</button></div>
+  <div class="filters">
+    <div><label for="source" class="meta">情報の出典</label><select id="source" name="source"><option value="">両方から探す</option>{% for key,s in sources.items() %}<option value="{{ key }}" {% if source==key %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+    <div><label for="category" class="meta">カテゴリ</label><select id="category" name="category"><option value="">すべて</option>{% for key,label in categories.items() %}<option value="{{ key }}" {% if category==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <p class="meta">条件を選んで「探す」を押してください。</p>
+  </div>
+</form>
+<nav class="topic-links" aria-label="カテゴリから探す"><a href="{{ url_for('web.index',source=source,q=query) }}" {% if not category %}aria-current="page"{% endif %}>すべて</a>{% for key,label in categories.items() %}<a href="{{ url_for('web.index',category=key,source=source,q=query) }}" {% if category==key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+<div class="source-strip" aria-label="情報の取得状況">{% for s in source_states %}<div><strong>{{ s.name }}</strong><span class="meta">{% if s.last_fetched %}最終取得 {{ s.last_fetched|jst }}{% else %}収集を待っています{% endif %}</span>{% if s.run and s.run.status in ['failed','partial'] %}<a class="status" href="{{ url_for('web.status') }}">収集エラーあり</a>{% elif s.run and s.run.status=='running' %}<span class="meta">現在収集中</span>{% elif s.stale %}<span class="status">24時間以内の取得記録なし</span>{% endif %}</div>{% endfor %}</div>
+<section aria-label="検索結果">
+<div class="results-top"><h2>{% if query %}「{{ query }}」の検索結果{% else %}お知らせ・案内{% endif %} <span class="result-count">{{ total }}件</span></h2>{% if query or category or source %}<a href="{{ url_for('web.index') }}">条件を解除</a>{% endif %}</div>
+<p class="meta result-note">出典の掲載日・更新日が新しい順です。イベントの開催順ではありません。分類は自動判定です。</p>
+{% if items %}<div class="cards">{% for a in items %}
+<article class="card">
+  <div class="card-top"><span class="badge">{{ categories[a.category] }}</span><span class="meta">{{ sources[a.source_key].name }}</span></div>
+  <h3><a id="article-{{ a.id }}" href="{{ url_for('web.detail',article_id=a.id,q=query,category=category,source=source,page=page) }}">{{ a.title }}</a></h3>
+  <p class="excerpt">{{ a.excerpt }}</p>
+  <p class="meta">出典の{{ '更新日' if a.date_kind=='updated' else '掲載日' }}：{{ a.source_date or '記載なし' }}</p>
+</article>{% endfor %}</div>
+{% else %}<div class="empty"><h3>表示できる情報がありません。</h3><p>検索の言葉や条件を変えてみてください。初回起動では、収集が終わるまで少しお待ちください。</p><div class="actions"><a class="button" href="{{ url_for('web.index') }}">すべての情報を表示</a><a href="{{ url_for('web.status') }}">収集状況を見る</a></div></div>{% endif %}
+{% if pages>1 %}<nav class="pagination" aria-label="ページ切り替え">{% if page>1 %}<a class="button" href="{{ page_url(page-1) }}">前のページ</a>{% endif %}<span>{{ page }} / {{ pages }}ページ</span>{% if page<pages %}<a class="button" href="{{ page_url(page+1) }}">次のページ</a>{% endif %}</nav>{% endif %}
+</section>
+{% endblock %}

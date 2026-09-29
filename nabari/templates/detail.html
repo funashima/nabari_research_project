@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}{{ article.title }} | なばり くらしの案内{% endblock %}
+{% block content %}
+<article class="detail">
+<a class="back-link" href="{{ back }}#article-{{ article.id }}">← 一覧に戻る</a>
+<div class="detail-heading"><span class="badge">{{ categories[article.category] }}（自動分類）</span><h1>{{ article.title }}</h1><p class="meta">出典：{{ sources[article.source_key].name }}</p></div>
+{% if stale %}<p class="notice alert">最後の取得から24時間以上経過しています。変更がないか公式ページをご確認ください。</p>{% endif %}
+<section aria-label="本文の抜粋" id="read-content"><h2>本文冒頭の自動抜粋</h2><p>{{ article.excerpt }}</p></section>
+<p class="notice">開催日時・申し込み条件・最新の変更は、公式ページでご確認ください。以下の掲載日・更新日はイベント開催日ではありません。</p>
+<div class="actions"><a class="button primary" href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ sources[article.source_key].name }}の公式ページへ（別タブ）</a><button id="speak" type="button">抜粋を読み上げる</button><button id="stop-speak" type="button">読み上げ停止</button><button id="print" type="button">印刷する</button></div>
+<p id="speech-status" class="status-msg" role="status" aria-live="polite"></p>
+<dl>
+  <dt>出典の{{ '更新日' if article.date_kind=='updated' else '掲載日' }}</dt><dd>{{ article.source_date or '記載を確認できませんでした' }}</dd>
+  <dt>このシステムの最終取得日時</dt><dd>{{ article.fetched_at|jst }}（日本時間）</dd>
+  <dt>保存後に検出した版</dt><dd>第{{ article.revision }}版 · 最終変更検出 {{ article.changed_at|jst }}</dd>
+  <dt>情報の扱い</dt><dd>記事の冒頭を機械的に抜粋しています。人が内容を確認した日時ではありません。</dd>
+</dl>
+<p class="source"><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.url }}</a></p>
+</article>
+{% endblock %}

@@ -1,0 +1,766 @@
+% !TeX program = lualatex
+% UTF-8. Compile from the docs directory with LuaLaTeX (twice).
+% This file is independently editable; it does not input a Markdown file.
+\documentclass[a4paper,10pt]{ltjsarticle}
+\usepackage{myfont-setting}
+\usepackage[top=21mm,bottom=21mm,left=22mm,right=22mm,headheight=15pt,headsep=8mm]{geometry}
+\usepackage[table]{xcolor}
+\definecolor{Ink}{HTML}{18344A}
+\definecolor{Blue}{HTML}{064C70}
+\definecolor{Pale}{HTML}{EDF5FA}
+\definecolor{Line}{HTML}{A9BDCA}
+\usepackage{array,longtable,booktabs}
+\usepackage{enumitem}
+\usepackage{fvextra}
+\usepackage{titlesec}
+\usepackage{fancyhdr,lastpage}
+\usepackage{xurl}
+\usepackage[unicode,colorlinks=true,urlcolor=Blue,linkcolor=Blue]{hyperref}
+\hypersetup{pdftitle={なばり情報システム入門},pdfauthor={研究プロジェクト制作支援}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{Blue}なばり 情報システムの概略}
+\fancyfoot[L]{\footnotesize 2026-09-28 / v2.0.0 / Flask}
+\fancyfoot[R]{\footnotesize\thepage\ / \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\titleformat{\section}{\Large\bfseries\sffamily\color{Blue}}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\sffamily\color{Blue}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{0pt}{12pt}
+\titlespacing*{\subsection}{0pt}{12pt}{7pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\linespread{1.23}
+\setlength{\emergencystretch}{3em}
+\setlist[itemize]{leftmargin=1.6em,topsep=3pt,itemsep=3pt,parsep=0pt}
+\renewcommand{\arraystretch}{1.28}
+\setlength{\tabcolsep}{5pt}
+\setlength{\LTpre}{8pt}
+\setlength{\LTpost}{10pt}
+\DefineVerbatimEnvironment{Code}{Verbatim}{fontsize=\small,breaklines=true,breakanywhere=true,frame=single,framesep=3mm,rulecolor=\color{Line},fillcolor=Pale}
+\color{Ink}
+\begin{document}
+
+
+
+{\fontsize{25}{35}\selectfont\bfseries\sffamily\color{Blue}なばり情報システム入門\par}\vspace{8pt}
+
+\section*{「集める」から「Webに表示する」まで}
+Hiroki Funashima
+\vspace{\fill}
+
+2026年9月28日 / Flask版 v2.0.0
+\clearpage
+
+
+\subsection*{このシステムで、何ができる？}
+
+名張市役所と名張市観光協会のWebサイトからお知らせを集め、自分のコンピュータに保存する。利用者が「ごみ」「祭り」などの言葉で検索すると、保存した情報から条件に合う記事を選び、Webページにして返す。
+
+
+図書委員がお知らせを集めて、出典付きのカードに整理し、質問に合うカードを見せる仕事を思い浮かべよう。このシステムは、その一部をプログラムで行う。人が記事の内容を正しいと判定する仕事まで自動化したわけではない。
+
+
+\subsection*{読み終わったときの目標}
+
+\begin{itemize}
+
+\item どこから、何を集めているか説明できる。
+
+\item 検索欄と収集設定の違いを説明できる。
+
+\item HTML、JSON、SQLiteの役割を区別できる。
+
+\item 「30件取得できた」と「使いやすいことが証明できた」の違いが分かる。
+
+\item 付録の短いPythonコードを、入力・処理・出力に分けて読める。
+
+\end{itemize}
+
+\subsection*{この本の順番}
+
+最初に全体の動きを見て、入力データと設定を確認する。次に実際の結果と、困ったときの見方を学ぶ。付録では、使っているライブラリと実装コードを順に読む。初めはコードを全部暗記しなくてよい。「この部分は何のためにあるか」を自分の言葉で説明してみよう。
+
+
+本書の画面や件数は2026年9月29日に確認した版に対応する。自動収集を実行すると、その後の件数や記事は変わる。ここに示すテスト結果はソフトウェアの動作確認であり、利用者の実験結果ではない。
+
+
+\clearpage
+
+\section*{1. やっていることを5段階に分ける}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{段階} & \textbf{たとえると} & \textbf{プログラムの仕事} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{段階} & \textbf{たとえると} & \textbf{プログラムの仕事} \\ \midrule\endhead
+
+1 取得 & 掲示板を見に行く & 公式サイトのHTMLを受信する \\ \addlinespace[3pt]
+
+2 抽出・整理 & 題名と必要な部分をメモする & 題名・本文冒頭・掲載日等を取り出す \\ \addlinespace[3pt]
+
+3 保存 & 整理したカードを棚に入れる & SQLiteの表へ保存する \\ \addlinespace[3pt]
+
+4 検索 & 条件に合うカードを探す & 言葉・出典・カテゴリで絞る \\ \addlinespace[3pt]
+
+5 表示 & 見つかったカードを見せる & FlaskがHTMLを作り、ブラウザへ返す \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+「取得・整理・保存」は、一般にETLと呼ぶ考え方に対応する。Extractは取り出す、Transformは形を整える、Loadは保存先へ入れる、という意味である。検索と表示は、その保存されたデータを利用する別の処理になる。
+
+
+\subsection*{いつ動く？}
+
+標準の起動方法では、起動直後に収集する。その収集が終わった後、約30分待って次の収集を行う。Webページを開くたびに公式サイト全体を取りに行くわけではない。利用者の検索には、すでに保存したデータを使う。
+
+
+そのため、検索する人が増えても、同じだけ公式サイトへの通信回数が増えるわけではない。一方、公式サイトが今更新されたとしても、このシステムがまだ取得していなければ画面には反映されない。
+
+
+\subsection*{「動的なWebページ」とは？}
+
+例えば検索欄を「ごみ」から「祭り」に変えると、Flaskが違う条件でDBを調べ、結果に応じたHTMLを作る。記事が増えれば、次にページを開いたときに表示内容も変わる。開きっぱなしのページが自動で最新表示に切り替わる機能はなく、再読み込みで更新する。
+
+
+FlaskはWebアプリを作るための道具で、SQLiteは情報を保存する道具である。どちらも生成AIではない。このシステムの本文は文章生成による要約ではなく、元ページの冒頭を短く抜き出したものである。
+
+
+実装の正確な動きは同梱コードを、実行時の取得件数は results/collection\_runs.json を確認する。説明用の短縮コードだけを本体へ貼り付けず、元の関数とテストも一緒に読もう。研究で支援を受けた範囲を明記し、自分が理解・変更・測定した内容を説明することが大切である。
+
+
+\clearpage
+
+\section*{2. 利用者が入力する項目}
+
+Web画面の入力は「何を表示してほしいか」を指定する。収集元の公式サイトを書き換えたり、記事を投稿したりするものではない。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{項目} & \textbf{意味} & \textbf{例・注意} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{項目} & \textbf{意味} & \textbf{例・注意} \\ \midrule\endhead
+
+言葉で探す & 題名や短い抜粋に含まれる語を探す & 「ごみ」「秋 祭り」。100文字まで \\ \addlinespace[3pt]
+
+情報の出典 & どちらの団体の情報を見るか & 両方／名張市役所／名張市観光協会 \\ \addlinespace[3pt]
+
+カテゴリ & 内容の種類を指定する & 観光・お出かけ、健康・福祉など \\ \addlinespace[3pt]
+
+ページ & 結果を12件ずつ見る & 次のページ・前のページで移動 \\ \addlinespace[3pt]
+
+文字の大きさ & 表示する文字を変える & 検索結果の内容は変わらない \\ \addlinespace[3pt]
+
+色をはっきり & 見やすい配色へ変える & 端末内に設定が残る \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+\subsection*{複数の言葉を入れると？}
+
+「秋 祭り」は、空白で分けた両方の語を含む記事を探す。これはAND検索という。「秋だけ」または「祭りだけ」でもよいOR検索とは違う。出典やカテゴリも選ぶと、さらに条件が増えるため、結果が0件になる場合がある。
+
+
+検索する前に文字を整える。「ｺﾞﾐ」「ゴミ」「ごみ」のような表記の違いをそろえる処理を正規化という。ただし、意味が似ている語を自動で推測する機能ではない。「清掃」と「ごみ」が同じ意味として必ず一致するわけではない。
+
+
+\subsection*{カテゴリの一覧}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{内部の値} & \textbf{画面で見える名前} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{内部の値} & \textbf{画面で見える名前} \\ \midrule\endhead
+
+event / tourism & イベント / 観光・お出かけ \\ \addlinespace[3pt]
+
+waste / health & ごみ・資源 / 健康・福祉 \\ \addlinespace[3pt]
+
+consult / disaster & 相談 / 防災 \\ \addlinespace[3pt]
+
+city & くらし・手続き \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+内部の \nolinkurl{source=city} は「出典が市役所」、\nolinkurl{category=city} は「分類がくらし・手続き」を表す。同じcityという文字でも、項目名が違えば意味が違う。URLやJSONを読むときは、名前と値を組にして確認しよう。
+
+
+\clearpage
+
+\section*{3. 入力データ：HTML・JSON・SQLite}
+
+\subsection*{HTMLは、Webページの構造を書いた文書}
+
+ブラウザの画面の裏側には、見出しや段落を指定するHTMLという文書がある。次は構造を理解するための架空の例で、実データではない。
+
+
+\begin{Code}
+<article class="article">
+  <h1>ごみのお知らせ</h1>
+  <p class="right">更新日：2026年9月20日</p>
+  <div class="txtbox">出し方の説明です。</div>
+</article>
+\end{Code}
+
+\nolinkurl{h1} は大きな見出し、\nolinkurl{p} は段落、\nolinkurl{div} は内容をまとめる箱のようなものだ。\nolinkurl{class} は箱の種類を区別するラベルとして使える。BeautifulSoupはこの構造を読んで、必要な部分を探す道具である。
+
+
+市役所の記事では \nolinkurl{article.article h1} など、観光協会では \nolinkurl{article.news-post h1.wp-entry-title} などを目印にする。公式サイトの作りが違うので、同じ目印を両方に使うと取得できないことがある。掲載形式が変わったときは、プログラムの見直しが必要になる。
+
+
+\subsection*{JSONは、項目名と値を受け渡す形式}
+
+次は説明用に一部だけ取り出した例で、そのまま取込に使える完全なファイルではない。
+
+
+\begin{Code}
+{
+  "source_key": "city",
+  "title": "ごみのお知らせ",
+  "category": "waste",
+  "source_date": "2026-09-20",
+  "revision": 1
+}
+\end{Code}
+
+左の名前と右の値をコロンで結び、項目の間をコンマで区切る。文字列は引用符で囲む。\nolinkurl{revision} の1は数なので引用符がない。日付が分からない項目には \nolinkurl{null} が入る場合がある。
+
+
+\subsection*{SQLiteは、情報を表として保存する仕組み}
+
+SQLiteのDBは、主に1つのファイルに表を保存する。JSONは情報を持ち運ぶため、SQLiteは繰り返し検索・更新するために使う。HTML・JSON・SQLiteは、それぞれ違う役割を担当している。
+
+
+\clearpage
+
+\section*{4. 保存される項目を読む}
+
+1件のお知らせを、次のような項目に分けて保存する。これを「構造化する」と呼ぶ。項目の名前がそろうと、出典が違っても同じ検索画面で扱える。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{項目} & \textbf{意味・読み方} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{項目} & \textbf{意味・読み方} \\ \midrule\endhead
+
+id & 記事を識別する短い文字列。URLから作る \\ \addlinespace[3pt]
+
+source\_key & cityなら名張市役所、tourismなら名張市観光協会 \\ \addlinespace[3pt]
+
+url & 元の公式記事のアドレス。同じURLの行を増やさない \\ \addlinespace[3pt]
+
+title & 記事の題名 \\ \addlinespace[3pt]
+
+excerpt & 本文冒頭の180文字まで。続きがあれば「…」を付ける \\ \addlinespace[3pt]
+
+category & 題名の言葉等で自動的に付けた分類 \\ \addlinespace[3pt]
+
+source\_date & 元ページの更新日または掲載日。開催日ではない \\ \addlinespace[3pt]
+
+date\_kind & updatedは更新日、publishedは掲載日を表す \\ \addlinespace[3pt]
+
+fetched\_at & 最後にこのシステムが取得した時刻 \\ \addlinespace[3pt]
+
+first\_seen\_at & このDBに初めて保存した時刻 \\ \addlinespace[3pt]
+
+changed\_at & 最後に内容の変化を検出した時刻 \\ \addlinespace[3pt]
+
+revision & 保存した内容の版番号。最初は1 \\ \addlinespace[3pt]
+
+content\_hash & 前回と同じ内容か比べるための文字列 \\ \addlinespace[3pt]
+
+search\_text & 検索しやすいよう表記を整えた題名・抜粋等 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+\subsection*{ハッシュは「内容から作る目印」}
+
+SHA-256という計算で、抽出した本文等から一定の長さの文字列を作る。本文の後半に変更があれば、先頭の抜粋が同じでもハッシュが変わるので、変更を検出できる。ただしハッシュは、記事の正しさや信頼性を採点する点数ではない。
+
+
+同じURL・同じハッシュなら、版番号は増やさず取得時刻だけを更新する。異なれば、版を増やし、題名や短い抜粋等の履歴も保存する。記事の全文はハッシュ計算のために解析するが、DBには全文を残さない。
+
+
+\subsection*{3種類の日付を混ぜない}
+
+9月20日が掲載日、9月29日が取得日、10月24日が開催日という記事もあり得る。9月29日に取得できたからといって、「9月29日に内容を人が確認した」「9月29日に行事を開催する」という意味にはならない。
+
+
+\clearpage
+
+\section*{5. 運用する人が指定する設定}
+
+設定は、プログラムを「どこで、どのくらいの間隔で動かすか」を決める。検索欄の入力とは役割が違う。まず既定値で動かし、必要な設定だけ変えよう。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{項目} & \textbf{既定値} & \textbf{意味} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{項目} & \textbf{既定値} & \textbf{意味} \\ \midrule\endhead
+
+--host & 127.0.0.1 & 接続を受け付ける場所。既定では自分のPCから利用 \\ \addlinespace[3pt]
+
+--port & 8000 & Webサーバの入口番号。URL末尾の:8000に対応 \\ \addlinespace[3pt]
+
+--interval & 1800秒 & 収集が終わってから次の収集までの待ち時間。900秒以上 \\ \addlinespace[3pt]
+
+--limit & 12件 & 各新着一覧の先頭から選ぶ件数。1〜20 \\ \addlinespace[3pt]
+
+--no-collect & 指定なし & 指定するとWeb表示だけ動かし、自動収集を止める \\ \addlinespace[3pt]
+
+NABARI\_DATABASE & instance内のDB & DBファイルを置く場所を変える環境変数 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+例えば、次のコマンドは1時間おきに収集し、各新着一覧の先頭10件を対象にする。
+
+
+\begin{Code}
+python run.py --interval 3600 --limit 10
+\end{Code}
+
+このとき、候補数は市役所10件＋定番7件＋観光協会10件で最大27件になる。ただし、新着一覧の件数が少ない、URLが重複している、取得に失敗する等の理由で、保存される数は27件より少なくなることがある。
+
+
+\subsection*{手動で1回だけ収集する設定}
+
+\begin{Code}
+python -m flask --app nabari collect --source tourism --limit 8
+\end{Code}
+
+\nolinkurl{--source} はこの収集コマンドで指定する。allは両方、cityは市役所、tourismは観光協会を表す。\nolinkurl{run.py} の引数には \nolinkurl{--source} はないので、コマンド名と引数を組で読む。同じ出典への再収集は、前回完了から15分以内だと省略される。
+
+
+\clearpage
+
+\section*{6. プログラム内の設定と処理内容}
+
+間隔を短くすると確認頻度は上がるが、相手サイトへの通信も増える。件数を増やすと広く集められるが、時間がかかる。短い間隔や最大件数にするほど良い、というものではない。目的と運用条件に合わせて決める。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{設定・場所} & \textbf{現在の内容} & \textbf{理由} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{設定・場所} & \textbf{現在の内容} & \textbf{理由} \\ \midrule\endhead
+
+SOURCES & 2団体のURLと許可ホスト & 意図しないサイトを取得しない \\ \addlinespace[3pt]
+
+evergreen & 市役所の定番7ページ & 新着に載らなくても生活情報を確認する \\ \addlinespace[3pt]
+
+CATEGORIES & 7種類の表示カテゴリ & 検索条件と表示名をそろえる \\ \addlinespace[3pt]
+
+通信間隔 & 最低1秒、robots指定があれば優先 & 連続した大量アクセスを避ける \\ \addlinespace[3pt]
+
+接続・受信待ち & 15秒・25秒 & 返答を無期限に待たない \\ \addlinespace[3pt]
+
+MAX\_BYTES & 2MiB＝2,097,152バイト & 極端に大きいページを処理しない \\ \addlinespace[3pt]
+
+再実行の間隔 & 最低900秒 & 同じ出典への連続実行を抑える \\ \addlinespace[3pt]
+
+状態確認の基準 & 最後の取得から24時間 & 古い取得記録を利用者に知らせる \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+これらは主に \nolinkurl{sources.py} と \nolinkurl{collector.py} に書かれている。上限や許可するURLを変える場合は、意味を理解してから担当教員と確認しよう。データ量と通信先が変わると、テストや利用条件も見直す必要がある。
+
+
+\subsection*{robots.txtとは？}
+
+サイトの運営者が自動収集プログラム向けのルールを示すファイルである。取得してはいけない場所などの指定を確認する。robots.txtで許可されることと、画像や文章を自由に転載できることは同じではない。このシステムは短い抜粋と出典リンクを示す。
+
+
+\subsection*{カテゴリは、どう決める？}
+
+\nolinkurl{classify()} では題名の言葉などを順に調べる。例えば「ごみ」「電池」等が含まれればごみ・資源へ分類する。相談や健康等の判定も行い、観光協会の記事はそれらに当たらなければ観光・お出かけにする。最後に残った市役所の記事はくらし・手続きへ入る。
+
+
+これは人が決めたルールであり、機械学習の訓練をしているわけではない。誤分類は起こり得る。直す場合は「この題名はこのカテゴリになる」というテストも追加すると、別の記事への影響を確認しやすい。
+
+
+\clearpage
+
+\section*{7. 結果の読み方}
+
+2026年9月29日の検証では、次の結果になった。設定した対象に対する結果であり、名張市にある情報の全体数ではない。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.24\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.16\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.27\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.33\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{出典} & \textbf{取得候補} & \textbf{取得できた件数} & \textbf{状態} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{出典} & \textbf{取得候補} & \textbf{取得できた件数} & \textbf{状態} \\ \midrule\endhead
+
+名張市役所 & 19 & 18 & 一部失敗 \\ \addlinespace[3pt]
+
+名張市観光協会 & 12 & 12 & 完了 \\ \addlinespace[3pt]
+
+合計 & 31 & 30 & 1件で502エラー \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+市役所の1ページで502というHTTPエラーが返った。外部サイトや途中の通信経路が正常に返答できなかったとき等に生じる。この番号だけで原因を断定することはできない。失敗したページを「内容が空の記事」として保存せず、他の30件を残している。
+
+
+\subsection*{取得履歴に出てくる項目}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{名前} & \textbf{意味} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{名前} & \textbf{意味} \\ \midrule\endhead
+
+discovered & その回に取得候補として選んだURL数 \\ \addlinespace[3pt]
+
+fetched & 取得・解析して保存処理まで成功した回数 \\ \addlinespace[3pt]
+
+new & 初めて保存した記事数 \\ \addlinespace[3pt]
+
+updated & 前回と違う内容に更新した記事数 \\ \addlinespace[3pt]
+
+unchanged & 前回と同じ内容だった記事数 \\ \addlinespace[3pt]
+
+errors & 取得・解析できなかったURLや理由 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+成功した取得では、fetchedはnew＋updated＋unchangedになる。取得回数と記事の総数は別なので、同じ記事を再取得しただけでは保存件数は増えない。updatedが0でも、正常に確認してunchangedが増えているなら、更新処理が止まったとは限らない。
+
+
+\subsection*{保存30件なのに、画面は29件？}
+
+観光協会の1件に、本日より先の2026年10月1日という掲載日が付いていた。この版は未来の掲載日を持つ記事を、その日が来るまで一覧・詳細・APIに出さない。データは消しておらず、収集状況には件数が示される。取得日と出典の日付を比べる例である。
+
+
+\clearpage
+
+\section*{8. 動かして確かめる}
+
+Python 3.11以上を使う。ZIPを展開し、READMEがあるフォルダでターミナルやコマンドプロンプトを開く。以下は一度だけ準備する手順である。
+
+
+\begin{Code}
+python -m venv .venv
+\end{Code}
+
+仮想環境は、この研究で使う追加ライブラリをまとめて置く場所である。次のうち、自分の環境に合う1行で有効にする。
+
+
+\begin{Code}
+# macOS / Linux
+source .venv/bin/activate
+\end{Code}
+
+\begin{Code}
+REM Windows command prompt
+.venv\Scripts\activate.bat
+\end{Code}
+
+続けて、必要なライブラリを入れ、同梱データで試す。
+
+
+\begin{Code}
+python -m pip install -r requirements.txt
+python -m flask --app nabari import-demo
+python run.py --no-collect
+\end{Code}
+
+ブラウザで \url{http://127.0.0.1:8000/} を開く。ライブラリのインストールにはネット接続が必要だが、同梱データを使った表示練習には外部サイトへの収集通信は不要である。既存のDBにデータが入っている場合、import-demoは上書きを拒否する。
+
+
+\subsection*{確認すること}
+
+\begin{itemize}
+
+\item 出典を観光協会にして「探す」を押す。記事の出典がそろうか確認する。
+
+\item 記事を1件開き、掲載日と取得日時を読み分ける。
+
+\item Ctrl+Cでサーバを止める。もう一度同じ起動コマンドを実行して、情報が残るか確かめる。
+
+\item 自動収集を試すときは、Ctrl+Cで止めてから \nolinkurl{python run.py} で起動し直す。
+
+\end{itemize}
+
+Web画面を閉じることと、Pythonのサーバを止めることは別である。サーバが止まると、ページの新しい要求に答えたり定期収集したりできなくなる。
+
+
+\clearpage
+
+\section*{9. 困ったときと、研究で言えること}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{見える状態} & \textbf{確認すること} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{見える状態} & \textbf{確認すること} \\ \midrule\endhead
+
+ページを開けない & サーバが動いているか、URLの番号が合っているか \\ \addlinespace[3pt]
+
+ライブラリが見つからない & 仮想環境を有効にしたか、pipを実行したか \\ \addlinespace[3pt]
+
+検索が0件 & 言葉・カテゴリ・出典の条件を減らす。初回収集状況を見る \\ \addlinespace[3pt]
+
+保存件数が増えない & unchangedが増えていないか。重複を防ぐ正常な動作かもしれない \\ \addlinespace[3pt]
+
+skippedと出る & 同じ出典が収集中、または15分以内に再実行していないか \\ \addlinespace[3pt]
+
+network\_error & 接続と取得先の状態を確認する。短時間に連打しない \\ \addlinespace[3pt]
+
+structure\_changed & 公式ページの構造が変わった可能性。目印とパーサを確認 \\ \addlinespace[3pt]
+
+古い取得時刻 & サーバ停止、取得失敗、新着対象から外れた可能性を確認 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+エラーが出たら、時刻、行った操作、表示されたメッセージを残す。「動かなかった」だけでなく、「何を入れ、何を期待し、何が起きたか」を書くと、原因を追いやすい。
+
+
+\subsection*{テスト58件が合格した、とは？}
+
+用意した入力に対して、期待した出力や状態になったという意味である。例えば「同じURLを2回保存しても記事数が増えない」「観光協会を指定すると市役所の記事が混ざらない」などを確認した。
+
+
+合格した58件の内訳は、Flask・収集・DBが29件、予備実験の集計が9件、固定した旧UIが20件である。全ブラウザで表示が崩れないことや、すべての利用者に使いやすいことまで証明した数字ではない。
+
+
+\clearpage
+
+\section*{Appendix A. どんなライブラリを使う？}
+
+ライブラリは、よく使う処理をまとめた道具箱である。すべてを一から書く代わりに、公開された道具を組み合わせる。何を任せ、どの部分を自分で決めたかを説明できることが大切だ。
+
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{名前} & \textbf{このシステムでの役割} & \textbf{たとえ} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{名前} & \textbf{このシステムでの役割} & \textbf{たとえ} \\ \midrule\endhead
+
+Flask & URLごとに処理を選び、応答を作る & 窓口の受付 \\ \addlinespace[3pt]
+
+Jinja2 & データをHTMLのひな型へ入れる & 空欄付きの印刷用紙 \\ \addlinespace[3pt]
+
+requests & 公式サイトへHTTP通信する & 取り寄せ担当 \\ \addlinespace[3pt]
+
+BeautifulSoup & HTMLの構造から情報を取り出す & ページの見出しを探す係 \\ \addlinespace[3pt]
+
+Waitress & ブラウザとの通信を受け付けてFlaskへ渡す & Webサーバの入口 \\ \addlinespace[3pt]
+
+pytest & Pythonの期待した動作を自動確認する & 確認手順を繰り返す係 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+Jinja2はFlaskの依存として一緒に入る。requirements.txtは主な実行時ライブラリの版を指定する。requirements-dev.txtにはテスト用のpytestも含む。Pythonで使う関数名と、pipで入れるパッケージ名が違う場合もある。例えばBeautifulSoupはbeautifulsoup4をインストールし、コードではbs4から読み込む。
+
+
+\subsection*{Pythonにもともと含まれる道具}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{名前} & \textbf{役割} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{名前} & \textbf{役割} \\ \midrule\endhead
+
+sqlite3 & SQLiteへ保存・検索する \\ \addlinespace[3pt]
+
+hashlib & 内容のハッシュを計算する \\ \addlinespace[3pt]
+
+json & JSONの文字列とPythonのデータを変換する \\ \addlinespace[3pt]
+
+datetime & 日付と時刻を扱う \\ \addlinespace[3pt]
+
+threading & 定期収集とWeb応答を同じプロセス内で並行して進める \\ \addlinespace[3pt]
+
+argparse & --intervalなどの起動引数を読む \\ \addlinespace[3pt]
+
+urllib.robotparser & robots.txtの指示を読む \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+ブラウザ側はJavaScriptとCSSを使う。Node.jsとjsdomは固定旧UIのテスト専用で、Flaskアプリを動かすためには不要である。本文PDFはLuaLaTeXで組版する。LuaLaTeXも、情報を収集するFlaskサーバとは別の道具である。
+
+
+\clearpage
+
+\section*{Appendix B. コードを入力・処理・出力で読む}
+
+\subsection*{B1. HTMLの中から題名を探す}
+
+実装の考え方を示す短い例である。実際には存在確認や上限の検査も行う。
+
+
+\begin{Code}
+from bs4 import BeautifulSoup
+
+soup = BeautifulSoup(html_bytes, "html.parser")
+heading = soup.select_one("article.article h1")
+title = heading.get_text(" ", strip=True)
+\end{Code}
+
+入力は受信したHTML、処理は目印に合う要素を探して文字を取り出すこと、出力はtitleという文字列になる。\nolinkurl{select_one} は最初に見つかった1個を返す。何も見つからなければNoneなので、実装ではその状態を検出して失敗を記録する。
+
+
+\subsection*{B2. 表記を整える}
+
+\begin{Code}
+text = unicodedata.normalize("NFKC", text).casefold()
+\end{Code}
+
+実装のnormalize関数にある処理である。NFKCで全角半角などの違いを整え、casefoldで英字の大小の違いを整える。続くコードでカタカナをひらがなに寄せ、余分な空白もまとめる。入力の意味を理解する処理ではなく、文字の表し方をそろえる処理である。
+
+
+\subsection*{B3. 保存済みか調べる}
+
+\begin{Code}
+old = db.execute(
+    "SELECT * FROM articles WHERE url=?",
+    (article_url,)
+).fetchone()
+\end{Code}
+
+SQLはDBへ質問するための言語である。これは「articlesの表から、このURLの行を探す」という質問だ。\nolinkurl{?} の場所へ別に渡した値を入れる。利用者の文字列をSQLの命令文へ直接つなげない書き方になっている。
+
+
+\nolinkurl{old} がありハッシュも同じなら、取得時刻だけを更新する。なければ新しい行を作る。保存内容が違えば更新し、revisionを1増やす。実際の処理は \nolinkurl{nabari/db.py} の \nolinkurl{save_article()} を読むと追える。
+
+
+\clearpage
+
+\section*{Appendix C. Webのコードと読む順番}
+
+\subsection*{C1. URLから処理を選ぶ}
+
+\begin{Code}
+@bp.get("/")
+def index():
+    result = query_articles()
+    return render_template("index.html", **result)
+\end{Code}
+
+これは仕組みを示すために短くした例である。実際のindex関数は、収集状況やページ送り用の情報もテンプレートへ渡す。\nolinkurl{@bp.get("/")} はトップページの要求を、この関数で処理するという指定だ。
+
+
+\nolinkurl{query_articles()} がDBを検索し、結果を辞書にまとめる。\nolinkurl{render_template()} はHTMLのひな型に結果を入れる。\nolinkurl{**result} は辞書の中身を名前付きの引数として渡す書き方である。
+
+
+\subsection*{C2. テンプレートに題名を入れる}
+
+\begin{Code}
+<h1>{{ article.title }}</h1>
+<p>{{ article.excerpt }}</p>
+\end{Code}
+
+二重の波かっこの位置へデータが入る。Jinjaは通常、HTMLとして特別な意味を持つ文字を安全な表示へ変換する。外部サイトの文章にHTMLに似た文字があっても、そのままプログラムとして実行させないための重要な仕組みである。
+
+
+\subsection*{ファイルを読むおすすめの順番}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.23\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.37\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.4\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{順番} & \textbf{読むもの} & \textbf{注目する問い} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{順番} & \textbf{読むもの} & \textbf{注目する問い} \\ \midrule\endhead
+
+1 & README.md & どう起動し、どのURLを見るか \\ \addlinespace[3pt]
+
+2 & sources.py & どのサイトとページを取得するか \\ \addlinespace[3pt]
+
+3 & collector.py & どう取り出し、失敗をどう扱うか \\ \addlinespace[3pt]
+
+4 & db.py & 何を保存し、変更をどう見分けるか \\ \addlinespace[3pt]
+
+5 & routes.py / templates & 検索条件がどう画面になるか \\ \addlinespace[3pt]
+
+6 & test\_flask\_system.py & どんな入力と期待結果を確認するか \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+\clearpage
+
+\section*{用語と、次に調べる資料}
+
+{\small\begin{longtable}{@{}>{\raggedright\arraybackslash}p{\dimexpr 0.28\textwidth-10.0pt\relax}>{\raggedright\arraybackslash}p{\dimexpr 0.72\textwidth-10.0pt\relax}@{}}
+
+\rowcolor{Pale}\textbf{用語} & \textbf{高校生向けの説明} \\ \midrule
+
+\endfirsthead
+
+\rowcolor{Pale}\textbf{用語} & \textbf{高校生向けの説明} \\ \midrule\endhead
+
+サーバ & 要求を受け取り、結果を返すプログラムやコンピュータ \\ \addlinespace[3pt]
+
+クライアント & 要求を送る側。この場合は主にブラウザ \\ \addlinespace[3pt]
+
+HTTP & Webの情報をやり取りするための決まり \\ \addlinespace[3pt]
+
+URL & Web上の情報の場所を表す文字列 \\ \addlinespace[3pt]
+
+API & プログラム同士が決まった形で情報を受け渡す入口 \\ \addlinespace[3pt]
+
+パーサ & 文書の構造を読み取る処理 \\ \addlinespace[3pt]
+
+スナップショット & ある時点のデータを固定して保存したもの \\ \addlinespace[3pt]
+
+タイムアウト & 決めた待ち時間を過ぎたら処理を打ち切ること \\ \addlinespace[3pt]
+
+コミット & DBの変更を確定して保存すること \\ \addlinespace[3pt]
+
+テスト用データ & 動作を確かめるために用意した入力。実際の住民データとは別 \\ \addlinespace[3pt]
+
+\bottomrule\end{longtable}}
+
+\subsection*{小さな確認課題}
+
+「同じ記事を2回取得したら、何が変わり、何が変わらないか」を説明してみよう。答えは、記事の内容が同じなら最終取得時刻は変わるが、記事の総数と版番号は増えない、である。新しい機能を加えるときも、このように期待する結果を先に言葉にすると考えやすい。
+
+
+\subsection*{公式情報と技術資料}
+
+名張市役所 新着情報一覧\\
+\url{https://www.city.nabari.lg.jp/news.html}
+
+
+名張市観光協会 お知らせ\\
+\url{https://kankou-nabari.jp/news}
+
+
+Flask公式ドキュメント\\
+\url{https://flask.palletsprojects.com/en/stable/}
+
+
+Python標準ライブラリの説明\\
+\url{https://docs.python.org/ja/3/library/}
+
+
+LuaTeX-ja（日本語をLuaLaTeXで組版するためのパッケージ）\\
+\url{https://ctan.org/pkg/luatexja}
+
+
+\end{document}

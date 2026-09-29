@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "date": "2026-09-29",
+  "stack": "Flask + SQLite + requests + BeautifulSoup + Waitress",
+  "sources": [
+    "名張市役所",
+    "名張市観光協会"
+  ],
+  "automatedTests": {
+    "flaskCollectorAndStorage": 29,
+    "analysis": 9,
+    "fixedResearchUI": 20,
+    "totalPassed": 58
+  },
+  "liveCollection": {
+    "city": {
+      "discovered": 19,
+      "fetched": 18,
+      "status": "partial",
+      "http502": 1
+    },
+    "tourism": {
+      "discovered": 12,
+      "fetched": 12,
+      "status": "success"
+    },
+    "stored": 30,
+    "futureDatedHidden": 1,
+    "visibleAsOfDate": 29
+  },
+  "httpSmoke": "passed",
+  "python": "3.12.14",
+  "browserVisualQA": "not_run",
+  "humanParticipants": 0,
+  "hosting": "not_deployed",
+  "researchStudyUI": "fixed_previous_prototype_not_live_flask_UI",
+  "snapshotSha256": "6562f62cdd60d581412b66156e0acb7922a49a3205f3eae5418d6aa15b557942",
+  "documents": {
+    "sourceFormat": "LuaLaTeX / ltjsarticle",
+    "researchReport": "docs/nabari_research_report.tex",
+    "studentGuide": "docs/nabari_student_guide.tex",
+    "studentGuideAudience": "高校2年生程度",
+    "researchReportPages": 7,
+    "studentGuidePages": 14,
+    "pdfEngine": "LuaTeX-1.17.0",
+    "luaTeXja": "20231230.0",
+    "compileErrors": 0,
+    "overfullBoxes": 0,
+    "missingGlyphWarnings": 0,
+    "visualQA": "all_pages_reviewed"
+  }
+}

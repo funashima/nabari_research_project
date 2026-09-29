@@ -1,0 +1,45 @@
+{
+  "server": "run.py / Flask / Waitress on loopback",
+  "asOfJST": "2026-09-29",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 15528
+    },
+    {
+      "path": "/?source=tourism",
+      "status": 200,
+      "bytes": 15170
+    },
+    {
+      "path": "/?q=ごみ",
+      "status": 200,
+      "bytes": 5838
+    },
+    {
+      "path": "/status",
+      "status": 200,
+      "bytes": 3504
+    },
+    {
+      "path": "/about",
+      "status": 200,
+      "bytes": 4376
+    },
+    {
+      "path": "/research/",
+      "status": 200,
+      "bytes": 3814
+    },
+    {
+      "path": "/healthz",
+      "status": 200,
+      "bytes": 16
+    }
+  ],
+  "allVisible": 29,
+  "tourismVisible": 11,
+  "detailStatus": 200,
+  "result": "passed"
+}

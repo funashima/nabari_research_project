@@ -1,0 +1,7 @@
+{
+  "name": "nabari-flask-research", "version": "2.0.0", "private": true,
+  "type": "module",
+  "description": "Flask版に付属する固定データ予備実験画面のテスト",
+  "scripts": {"test": "node --test tests/*.test.mjs", "validate": "node tools/validate.mjs"},
+  "engines": {"node": ">=20"}, "devDependencies": {"jsdom": "26.1.0"}
+}

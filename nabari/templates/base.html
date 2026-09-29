@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="名張市役所と名張市観光協会のお知らせをまとめて探せる高専研究の試作システム。">
+  <title>{% block title %}なばり くらしの案内{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='live.css') }}">
+  <script src="{{ url_for('static', filename='live.js') }}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ移動</a>
+<header class="masthead"><div class="wrap">
+  <a class="brand" href="{{ url_for('web.index') }}"><span>なばり</span> くらしの案内<small>暮らしと、お出かけの情報をひとつに。</small></a>
+  <div class="controls" aria-label="表示の調整">
+    <span class="meta">文字</span>
+    <button type="button" data-size-button="normal" aria-pressed="true">標準</button>
+    <button type="button" data-size-button="large" aria-pressed="false">大きく</button>
+    <button type="button" data-size-button="largest" aria-pressed="false">もっと大きく</button>
+    <button id="contrast" type="button" aria-pressed="false">色をはっきり</button>
+  </div>
+</div></header>
+<div class="wrap"><p class="notice">高専研究の試作システムです。名張市役所・名張市観光協会の公式サービスではありません。</p></div>
+<main id="main" class="wrap">{% block content %}{% endblock %}</main>
+<footer><div class="wrap">
+  <span>なばり くらしの案内 · Flask版</span>
+  <nav aria-label="補足"><a href="{{ url_for('web.about') }}">使い方・情報について</a><a href="{{ url_for('web.status') }}">収集状況</a></nav>
+</div></footer>
+</body></html>

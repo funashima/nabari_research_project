@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "source_key": "city",
+    "started_at": "2026-09-29T07:53:41+00:00",
+    "finished_at": "2026-09-29T07:54:17+00:00",
+    "heartbeat_at": "2026-09-29T07:54:17+00:00",
+    "status": "partial",
+    "discovered": 19,
+    "fetched": 18,
+    "new": 18,
+    "updated": 0,
+    "unchanged": 0,
+    "errors_json": "[{\"url\": \"https://www.city.nabari.lg.jp/s044/010/050/10/070/090/033/20260825143422.html\", \"error\": \"http_502\"}]"
+  },
+  {
+    "id": 2,
+    "source_key": "tourism",
+    "started_at": "2026-09-29T07:54:17+00:00",
+    "finished_at": "2026-09-29T07:54:35+00:00",
+    "heartbeat_at": "2026-09-29T07:54:34+00:00",
+    "status": "success",
+    "discovered": 12,
+    "fetched": 12,
+    "new": 12,
+    "updated": 0,
+    "unchanged": 0,
+    "errors_json": "[]"
+  }
+]

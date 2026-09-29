@@ -1,0 +1,28 @@
+✔ official dataset contains ten valid entries and six categories (2.750674ms)
+✔ search normalizes half-width, kana, and spaces (7.062133ms)
+✔ all search terms must match and category combines with query (0.388163ms)
+✔ no-result state is genuine (0.345861ms)
+✔ events remain on final day then expire, can be included explicitly (0.1836ms)
+✔ staleness uses content verification date and strictly exceeds 30 days (0.125688ms)
+✔ dates are real dates including leap years (0.093231ms)
+✔ day boundaries use Japan time (8.506929ms)
+✔ malicious or nonofficial source URLs are rejected (0.22511ms)
+✔ HTML data is escaped before rendering (0.297881ms)
+✔ duplicate IDs, unknown categories, invalid dates and phones fail validation (1.815822ms)
+✔ wrong shape is rejected without throwing (0.203382ms)
+✔ four-group crossover balances both conditions and task sets (0.496059ms)
+✔ invalid participant and invalid observations fail (0.373313ms)
+✔ failures and assistance incur prespecified restricted time (0.116925ms)
+✔ resident journey: category, detail, source, back preserves filter and focus (136.813424ms)
+✔ search empty state, text settings, contrast, unsupported audio (52.821622ms)
+✔ baseline hides treatment controls but retains all data and detail content (24.481752ms)
+✔ editor refuses unsafe source and exports valid changes without HTML execution (30.307335ms)
+✔ study runs six practice tasks, records actions and exports a coherent crossover (102.993717ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 707.858101
